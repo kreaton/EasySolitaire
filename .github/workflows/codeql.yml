@@ -26,8 +26,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # No javascript-typescript: the game has no JavaScript files to scan, and CodeQL fails on an empty language.
           - language: csharp
-          - language: javascript-typescript
           - language: actions
     steps:
       - uses: actions/checkout@v7
