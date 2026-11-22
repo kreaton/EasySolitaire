@@ -60,6 +60,7 @@ Used to build, test or render promotional material only; not part of the shipped
 | Asset(s) | Origin | Licence |
 |---|---|---|
 | `art/icon.svg`, `src/EasySolitaire/wwwroot/icons/` (8 files: .png, rendered from `art/icon.svg` by `tools/make-icons.ps1`) | Drawn by the author as SVG (written with an AI coding agent), not made with an image-generation tool. The cat on the front card is the 🐱 emoji in Microsoft's Fluent Emoji design, rendered from the Segoe UI Emoji font | MIT (as part of this project); the cat emoji design is © Microsoft, MIT ([microsoft/fluentui-emoji](https://github.com/microsoft/fluentui-emoji)) |
+| `src/EasySolitaire/wwwroot/img/card-back.svg` (the back of the cards) | Drawn by the author as SVG (written with an AI coding agent), not made with an image-generation tool | MIT (as part of this project) |
 | `images/banner.png` | Screenshot of the game | MIT (as part of this project) |
 | Card symbols and animals in the game (♥ ♦ ♠ ♣, 🐱 🐶 🐼 🐸 and other emoji) | Not shipped: drawn at run time by the fonts installed on the player's device | — |
 

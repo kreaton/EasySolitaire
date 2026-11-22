@@ -87,6 +87,7 @@ The app is served from an `easysolitaire` sub-path: `<base href>` in [`wwwroot/i
 | `src/EasySolitaire/Components/Game.razor` | The board, top bar, help and win dialogs |
 | `src/EasySolitaire/Components/CardView.razor` | One card |
 | `src/EasySolitaire/wwwroot/css/app.css` | All styling; every size scales from one `--cw` (card width) variable |
+| `src/EasySolitaire/wwwroot/img/card-back.svg` | The back of the cards |
 | `src/EasySolitaire/wwwroot/index.html` | Host page, icons and PWA meta tags |
 | `src/EasySolitaire/wwwroot/manifest.webmanifest` | PWA manifest for "Add to Home Screen" |
 | `src/EasySolitaire/wwwroot/icons/` | App icons and favicon |
