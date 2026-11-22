@@ -1,0 +1,402 @@
+@namespace EasySolitaire.Components
+@implements IDisposable
+@inject IJSRuntime JS
+
+@if (_g is null)
+{
+    <div class="loading">🃏 Deler kortene ud…</div>
+}
+else
+{
+    var slots = Math.Max(_level.Columns, 7);   // room for 4 home piles, a small gap, the turned card and the deck
+    var turned = _g.WasteTop;
+    bool lit = _bulbOn && turned is { } t1 && _g.FitsAnywhere(t1);
+    int glowHome = _bulbOn && turned is { } t2 && _g.CanGoHome(t2) ? (int)t2.Suit : -1;
+    int maxRank = _g.MaxRank;
+
+    <div class="app @(_animals ? "animals" : "suits")" style="--cols:@_level.Columns;--slots:@slots">
+
+        <header class="bar">
+            <h1><span class="logo">🃏</span> Let Kabale</h1>
+
+            <div class="levels" role="group" aria-label="Vælg et niveau">
+                @foreach (var l in LevelInfo.All)
+                {
+                    var lv = l;
+                    <button type="button" class="lvl @(lv.Number == _level.Number ? "on" : "")"
+                            aria-pressed="@(lv.Number == _level.Number)"
+                            @onclick="() => ChangeLevelAsync(lv)">
+                        <span class="lvl-name">Niveau @lv.Number</span>
+                        <span class="lvl-range">@lv.RangeText</span>
+                        <span class="lvl-solved" title="Spil løst på dette niveau">⭐ @_solved[lv.Number - 1]</span>
+                    </button>
+                }
+            </div>
+
+            <div class="stats">
+                <span class="chip" title="Tid">⏱ @TimeText</span>
+                <span class="chip" title="Løste spil">🏆 Løst: @TotalSolved</span>
+            </div>
+
+            <div class="tools">
+                <button type="button" class="btn" @onclick="NewGameAsync">🔄 Nyt spil</button>
+                <button type="button" class="btn" @onclick="Undo" disabled="@(!CanUndo)">↩️ Fortryd</button>
+                <label class="toggle"><input type="checkbox" @bind="_animals" @bind:after="SaveSettingsAsync" /><span>🐼 Dyr</span></label>
+                <label class="toggle"><input type="checkbox" @bind="_bulbOn" @bind:after="SaveSettingsAsync" /><span>💡 Lyspære</span></label>
+                <button type="button" class="btn round" aria-label="Sådan spiller du" @onclick="() => _showHelp = true">?</button>
+                <a class="kg-home" href="../" aria-label="Alle spil" title="Alle spil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h4.5v-6h4v6h4.5V9.5" /></svg><span class="kg-text">Alle spil</span></a>
+            </div>
+        </header>
+
+        <p class="msg" aria-live="polite">@(_dealing ? "Blander kortene…" : _message)</p>
+
+        <div class="board">
+        <section class="top" aria-label="Hjemmebunker, vendt kort og bunke">
+            @for (int s = 0; s < 4; s++)
+            {
+                var suit = (Suit)s;
+                int h = _g.Home[s];
+                <div class="pile">
+                    @if (h > 0)
+                    {
+                        <CardView @key="@(new Card(suit, h).Id)" Card="new Card(suit, h)" MaxRank="maxRank" Animals="_animals"
+                                  Glow="@(glowHome == s)" />
+                    }
+                    else
+                    {
+                        <div class="slot home @(glowHome == s ? "glow" : "") @(suit is Suit.Hearts or Suit.Diamonds ? "red" : "black")">
+                            @if (_animals) { <span class="animal">@CardText.Animal(suit)</span> }
+                            else { <span class="suit">@CardText.Symbol(suit)</span> }
+                            <small>@CardText.Label(1, maxRank)</small>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="pile waste">
+                @if (turned is { } wc)
+                {
+                    <CardView @key="wc.Id" Card="wc" MaxRank="maxRank" Animals="_animals" Clickable="true"
+                              Glow="lit" Shake="@(_shake == "waste")" OnClick="PlayWasteAsync" />
+                }
+                else
+                {
+                    <div class="slot"></div>
+                }
+                @if (_bulbOn)
+                {
+                    <span class="bulb @(lit ? "lit" : "")" title="@(lit ? "Dette kort kan spilles!" : "Ingen plads til dette kort endnu")"
+                          role="img" aria-label="@(lit ? "Lyspæren lyser: det vendte kort kan spilles" : "Lyspæren er slukket")">💡</span>
+                }
+            </div>
+
+            <div class="pile">
+                @if (_g.Stock.Count > 0)
+                {
+                    <CardView FaceUp="false" Clickable="true" AriaOverride="Bunke: vend et nyt kort" OnClick="Draw">
+                        <span class="count">@_g.Stock.Count</span>
+                    </CardView>
+                }
+                else
+                {
+                    <button type="button" class="slot deck-empty" disabled="@(_g.Waste.Count == 0)"
+                            aria-label="Vend kortene tilbage i bunken" @onclick="Draw">@(_g.Waste.Count > 0 ? "↻" : "")</button>
+                }
+            </div>
+
+        </section>
+
+        <section class="tableau" aria-label="Kolonner">
+            @for (int ci = 0; ci < _g.Columns.Length; ci++)
+            {
+                int c = ci;
+                var col = _g.Columns[c];
+                bool accepts = _bulbOn && turned is { } t3 && _g.CanGoOnColumn(t3, c);
+                <div class="col" style="@ColumnStyle(col)">
+                    @if (col.IsEmpty)
+                    {
+                        <div class="slot empty-col @(accepts ? "glow" : "")"><span>@CardText.Label(maxRank, maxRank)</span></div>
+                    }
+                    @for (int k = 0; k < col.Cards.Count; k++)
+                    {
+                        int i = k;
+                        var card = col.Cards[i];
+                        bool down = i < col.FaceDown;
+                        bool last = i == col.Cards.Count - 1;
+                        <CardView @key="card.Id" Card="card" FaceUp="!down" MaxRank="maxRank" Animals="_animals"
+                                  Clickable="!down" Glow="@(last && accepts)" Shake="@(_shake == $"c{c}-{i}")"
+                                  Style="@CardStyle(col, i)" OnClick="() => PlayColumnAsync(c, i)" />
+                    }
+                </div>
+            }
+        </section>
+        </div>
+
+        <footer class="credits">Lavet med kærlighed 💛 (c) 2026 Per Hejndorf, Kreaton – @BuildInfo.Display</footer>
+    </div>
+
+    @if (_won)
+    {
+        <div class="overlay" role="dialog" aria-modal="true" aria-label="Du vandt">
+            <div class="confetti" aria-hidden="true">
+                @for (int i = 0; i < 24; i++)
+                {
+                    <span class="confetto" style="left:@(i * 4 + 2)%;animation-delay:@((i % 8) * 280)ms;animation-duration:@(3200 + (i % 5) * 400)ms">@ConfettiBits[i % ConfettiBits.Length]</span>
+                }
+            </div>
+            <div class="dialog">
+                <h2>🎉 Du klarede den! 🎉</h2>
+                <p class="big">⏱ @TimeText</p>
+                @if (_newRecord) { <p>🏅 Ny bedste tid på dette niveau!</p> }
+                <p>Løste spil: <b>@TotalSolved</b></p>
+                <div class="dialog-buttons">
+                    <button type="button" class="btn primary" @onclick="NewGameAsync">▶ Spil igen</button>
+                    @if (_level.Number < LevelInfo.All.Length)
+                    {
+                        <button type="button" class="btn" @onclick="NextLevelAsync">⬆ Næste niveau</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showHelp)
+    {
+        <div class="overlay" role="dialog" aria-modal="true" aria-label="Sådan spiller du" @onclick="CloseHelp">
+            <div class="dialog help" @onclick:stopPropagation="true">
+                <h2>Sådan spiller du</h2>
+                <ul>
+                    <li>🎯 <b>Mål:</b> flyt alle kort op i de fire <b>hjemmebunker</b> øverst til højre. Hver bunke er @(_animals ? "ét dyr" : "én kulør") og tæller opad: <b>1, 2, 3…</b> op til @CardText.DefiniteName(maxRank, maxRank).</li>
+                    <li>🔽 <b>I kolonnerne</b> lægger du et kort på et kort, der er <b>ét tal højere</b> og har en <b>anden farve</b>. Rød 5 på sort 6 ✅. Rød 5 på rød 6 ❌.</li>
+                    <li>👆 <b>Tryk på et kort i en kolonne</b> for at flytte det – og kortene, der ligger på det – hen, hvor det passer. Skjulte kort vender sig, når du afdækker dem!</li>
+                    <li>🂠 <b>Tryk på bunken</b> for at vende et kort. <b>Tryk på det vendte kort</b> for at spille det: det går hjem, hvis det kan, og ellers til den kolonne længst til venstre, hvor det passer. Er bunken tom? Tryk på den tomme plads for at vende kortene om igen.</li>
+                    <li>👑 <b>Tom kolonne?</b> Kun @CardText.DefiniteName(maxRank, maxRank) kan ligge der.</li>
+                    <li>💡 Slå <b>lyspæren</b> til, hvis du vil have hjælp: den tænder, når det vendte kort har et sted at gå hen, og de steder, hvor det passer, lyser gult.</li>
+                    <li>↩️ Lavet en fejl? Tryk på <b>Fortryd</b>.</li>
+                </ul>
+                <div class="dialog-buttons"><button type="button" class="btn primary" @onclick="CloseHelp">Lad os spille!</button></div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private const string Prefix = "easysolitaire.";
+    private static readonly string[] ConfettiBits = ["🎉", "⭐", "🎈", "✨", "🐼", "🐱", "🐶", "🐸"];
+
+    private readonly Stopwatch _clock = new();
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Stack<GameState> _undo = new();
+    private readonly int[] _solved = new int[LevelInfo.All.Length];
+    private readonly int[] _best = new int[LevelInfo.All.Length]; // best time in seconds, 0 = none yet
+
+    private GameState? _g;
+    private LevelInfo _level = LevelInfo.All[0];
+    private bool _animals = true;
+    private bool _bulbOn;
+    private bool _dealing;
+    private bool _won;
+    private bool _newRecord;
+    private bool _showHelp;
+    private string _message = "";
+    private string? _shake;
+
+    private int TotalSolved => _solved.Sum();
+    private bool CanUndo => _undo.Count > 0 && !_won && !_dealing;
+
+    private string TimeText
+    {
+        get
+        {
+            var t = _clock.Elapsed;
+            return t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes}:{t.Seconds:00}";
+        }
+    }
+
+    // ---------- Layout helpers (whole numbers only, so any browser language works) ----------
+
+    private static string ColumnStyle(Column col) =>
+        $"--cd:{col.FaceDown};--cu:{Math.Max(0, col.FaceUpCount - 1)}";
+
+    private static string CardStyle(Column col, int index) =>
+        $"--d:{Math.Min(index, col.FaceDown)};--u:{Math.Max(0, index - col.FaceDown)}";
+
+    // ---------- Start-up, saving ----------
+
+    protected override async Task OnInitializedAsync()
+    {
+        _level = LevelInfo.FromNumber(ParseInt(await LoadAsync("level"), 1));
+        _animals = await LoadAsync("animals") != "0";   // on unless switched off
+        _bulbOn = await LoadAsync("bulb") == "1";       // off unless switched on
+        for (int i = 0; i < _solved.Length; i++)
+        {
+            _solved[i] = ParseInt(await LoadAsync($"solved.{i + 1}"), 0);
+            _best[i] = ParseInt(await LoadAsync($"best.{i + 1}"), 0);
+        }
+        _showHelp = await LoadAsync("help-seen") != "1";
+        if (_showHelp) await SaveAsync("help-seen", "1");
+
+        await NewGameAsync();
+        _ = TickAsync();
+    }
+
+    private static int ParseInt(string? text, int fallback) =>
+        int.TryParse(text, out var n) ? n : fallback;
+
+    private async Task<string?> LoadAsync(string key)
+    {
+        try { return await JS.InvokeAsync<string?>("localStorage.getItem", Prefix + key); }
+        catch { return null; }   // storage can be blocked; the game still works
+    }
+
+    private async Task SaveAsync(string key, string value)
+    {
+        try { await JS.InvokeVoidAsync("localStorage.setItem", Prefix + key, value); }
+        catch { }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        await SaveAsync("animals", _animals ? "1" : "0");
+        await SaveAsync("bulb", _bulbOn ? "1" : "0");
+    }
+
+    // ---------- Timer ----------
+
+    private async Task TickAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+                if (_clock.IsRunning) await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    /// <summary>The clock starts with the first move, so reading the help doesn't cost time.</summary>
+    private void StartClock()
+    {
+        if (!_won && !_clock.IsRunning) _clock.Start();
+    }
+
+    // ---------- Games and levels ----------
+
+    private async Task ChangeLevelAsync(LevelInfo level)
+    {
+        _level = level;
+        await SaveAsync("level", level.Number.ToString());
+        await NewGameAsync();
+    }
+
+    private Task NextLevelAsync() =>
+        ChangeLevelAsync(LevelInfo.FromNumber(_level.Number + 1));
+
+    private async Task NewGameAsync()
+    {
+        _dealing = true;
+        _won = false;
+        _clock.Reset();
+        StateHasChanged();
+        await Task.Delay(30);   // let the browser paint "Blander…" before the solver runs
+
+        _g = DealGenerator.NewDeal(_level, Random.Shared);
+        _undo.Clear();
+        _message = $"Niveau {_level.Number}: kort {_level.RangeText}. Tryk på bunken for at vende et kort!";
+        _dealing = false;
+    }
+
+    private async Task WinAsync()
+    {
+        _clock.Stop();
+        _won = true;
+        int index = _level.Number - 1;
+        _solved[index]++;
+
+        int seconds = Math.Max(1, (int)_clock.Elapsed.TotalSeconds);
+        _newRecord = _best[index] == 0 || seconds < _best[index];
+        if (_newRecord) _best[index] = seconds;
+
+        await SaveAsync($"solved.{_level.Number}", _solved[index].ToString());
+        await SaveAsync($"best.{_level.Number}", _best[index].ToString());
+    }
+
+    private void CloseHelp() => _showHelp = false;
+
+    // ---------- Playing ----------
+
+    private void Draw()
+    {
+        if (_g is null || _won || _dealing) return;
+        var before = _g.Clone();
+        var result = _g.Draw();
+        if (result == DrawResult.Nothing) return;
+
+        _undo.Push(before);
+        StartClock();
+        _message = result == DrawResult.Drew
+            ? "Et nyt kort er vendt. Kan det komme nogen steder? Tryk på det for at prøve!"
+            : "Bunken er vendt om. Lad os gå kortene igennem igen!";
+    }
+
+    private async Task PlayWasteAsync()
+    {
+        if (_g is null || _won || _dealing) return;
+        var before = _g.Clone();
+        var move = _g.PlayWaste();
+        if (move is null)
+        {
+            _message = Coach.CannotMove(fromDeckPile: true);
+            await ShakeAsync("waste");
+            return;
+        }
+        await AfterMoveAsync(before, move);
+    }
+
+    private async Task PlayColumnAsync(int column, int index)
+    {
+        if (_g is null || _won || _dealing) return;
+        var before = _g.Clone();
+        var move = _g.PlayColumn(column, index);
+        if (move is null)
+        {
+            _message = Coach.CannotMove(fromDeckPile: false);
+            await ShakeAsync($"c{column}-{index}");
+            return;
+        }
+        await AfterMoveAsync(before, move);
+    }
+
+    private async Task AfterMoveAsync(GameState before, MoveInfo move)
+    {
+        _undo.Push(before);
+        StartClock();
+        _message = Coach.Explain(move, _g!.MaxRank, _animals);
+        if (_g.IsWon)
+        {
+            _message = "🎉 Alle kort er hjemme. Godt klaret!";
+            await WinAsync();
+        }
+    }
+
+    private void Undo()
+    {
+        if (!CanUndo) return;
+        _g = _undo.Pop();
+        _message = "Et skridt tilbage.";
+    }
+
+    private async Task ShakeAsync(string key)
+    {
+        _shake = key;
+        StateHasChanged();
+        await Task.Delay(450);
+        _shake = null;
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

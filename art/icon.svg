@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Let Kabale icon: two playing cards on green card-table felt. The back card has the game's blue
+       pattern; the front card shows a red 5 and the game's cat (hearts in animal mode).
+       Everything important sits inside the maskable safe zone (a circle of 40 % radius). -->
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="22%" r="85%">
+      <stop offset="0" stop-color="#3bb374" />
+      <stop offset=".55" stop-color="#1d7a4b" />
+      <stop offset="1" stop-color="#11502f" />
+    </radialGradient>
+    <pattern id="stripes" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="17" height="34" fill="#ffffff" fill-opacity=".22" />
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000" flood-opacity=".35" />
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#felt)" />
+
+  <!-- Back card -->
+  <g transform="translate(400 520) rotate(-14)" filter="url(#shadow)">
+    <rect x="-165" y="-232" width="330" height="464" rx="36" fill="#2f6fed" stroke="#fff" stroke-width="16" />
+    <rect x="-149" y="-216" width="298" height="432" rx="26" fill="url(#stripes)" />
+    <circle r="62" fill="#fff" fill-opacity=".3" />
+  </g>
+
+  <!-- Front card -->
+  <g transform="translate(610 510) rotate(9)" filter="url(#shadow)">
+    <rect x="-165" y="-232" width="330" height="464" rx="36" fill="#fff" />
+    <text x="-128" y="-122" font-family="Nunito, 'Trebuchet MS', 'Segoe UI', sans-serif" font-weight="900" font-size="120" fill="#d62839">5</text>
+    <circle cx="0" cy="58" r="108" fill="#fff" stroke="#d62839" stroke-width="18" />
+    <text x="0" y="58" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif" font-size="132">🐱</text>
+  </g>
+</svg>

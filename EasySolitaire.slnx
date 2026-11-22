@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/deploy.yml" />
+  </Folder>
+  <Project Path="src/EasySolitaire/EasySolitaire.csproj" />
+  <Project Path="tests/EasySolitaire.EngineTests/EasySolitaire.EngineTests.csproj" />
+</Solution>

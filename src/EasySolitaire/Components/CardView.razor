@@ -1,0 +1,60 @@
+@namespace EasySolitaire.Components
+
+<button type="button"
+        class="@CssClass"
+        style="@Style"
+        @onclick="OnClick"
+        disabled="@(!Clickable)"
+        aria-label="@AriaLabel">
+    @if (FaceUp)
+    {
+        <span class="corner">
+            <span class="rank">@CardText.Label(Card.Rank, MaxRank)</span>
+            @Pip(Card.Suit)
+        </span>
+        <span class="center">@Pip(Card.Suit)</span>
+    }
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public Card Card { get; set; }
+    [Parameter] public bool FaceUp { get; set; } = true;
+    [Parameter] public int MaxRank { get; set; } = 13;
+    [Parameter] public bool Animals { get; set; }
+    [Parameter] public bool Clickable { get; set; }
+    [Parameter] public bool Glow { get; set; }
+    [Parameter] public bool Shake { get; set; }
+    /// <summary>Inline style, used by columns to position the card.</summary>
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? AriaOverride { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string CssClass =>
+        "card " + (FaceUp ? "face " + (Card.IsRed ? "red" : "black") : "back")
+        + (Glow ? " glow" : "") + (Shake ? " shake" : "") + (Clickable ? " clickable" : "");
+
+    private string AriaLabel
+    {
+        get
+        {
+            if (AriaOverride is not null) return AriaOverride;
+            if (!FaceUp) return "Kort med bagsiden opad";
+            string what = Animals ? CardText.AnimalName(Card.Suit) : CardText.SuitName(Card.Suit);
+            return $"{what} {CardText.Name(Card.Rank, MaxRank)}, {(Card.IsRed ? "rød" : "sort")}";
+        }
+    }
+
+    /// <summary>The suit symbol, or a cute animal inside a red or black ring.</summary>
+    private RenderFragment Pip(Suit suit) => @<text>
+        @if (Animals)
+        {
+            <span class="animal" aria-hidden="true">@CardText.Animal(suit)</span>
+        }
+        else
+        {
+            <span class="suit" aria-hidden="true">@CardText.Symbol(suit)</span>
+        }
+    </text>;
+}
