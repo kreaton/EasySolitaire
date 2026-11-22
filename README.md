@@ -30,7 +30,7 @@ It is a Blazor WebAssembly app (.NET 10) that runs entirely in the browser, with
 * **Tap the turned card**: it goes home if it can, otherwise to the *leftmost* column it fits on.
 * **Tap a card in a column**: it, and the cards lying on it, moves to another place it fits: home first,
   otherwise the next fitting column to the right (wrapping around).
-* After every move a short Danish sentence explains *why* it was allowed, to teach the rules
+* With **💬 Tekst** on, a short Danish sentence after every move explains *why* it was allowed, to teach the rules
   (*"Den røde 5'er passer på den sorte 6'er: ét tal lavere og en anden farve."*).
 * Made a wrong move? **Fortryd** (undo).
 
@@ -40,6 +40,7 @@ Switches in the top bar:
 
 * **🐼 Dyr** (animals, on by default): a cat and a dog in a red ring, a panda and a frog in a black ring, instead of ♥ ♦ ♠ ♣.
 * **💡 Lyspære** (light bulb, off by default): lights up when the turned card can be played, and the places it fits glow.
+* **💬 Tekst** (text, off by default): shows the explanation line under the top bar. The game is made for children from 5 who can't read yet, so it is hidden unless a grown-up switches it on (screen readers still get it).
 
 The picture cards on level 3 use the Danish letters **E B D K** (es, bonde, dame, konge). The timer starts on the first move; solved games and best times are kept per level in the browser (localStorage).
 

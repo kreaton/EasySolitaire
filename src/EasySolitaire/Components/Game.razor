@@ -43,12 +43,14 @@ else
                 <button type="button" class="btn" @onclick="Undo" disabled="@(!CanUndo)">↩️ Fortryd</button>
                 <label class="toggle"><input type="checkbox" @bind="_animals" @bind:after="SaveSettingsAsync" /><span>🐼 Dyr</span></label>
                 <label class="toggle"><input type="checkbox" @bind="_bulbOn" @bind:after="SaveSettingsAsync" /><span>💡 Lyspære</span></label>
+                <label class="toggle"><input type="checkbox" @bind="_showText" @bind:after="SaveSettingsAsync" /><span>💬 Tekst</span></label>
                 <button type="button" class="btn round" aria-label="Sådan spiller du" @onclick="() => _showHelp = true">?</button>
                 <a class="kg-home" href="../" aria-label="Alle spil" title="Alle spil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h4.5v-6h4v6h4.5V9.5" /></svg><span class="kg-text">Alle spil</span></a>
             </div>
         </header>
 
-        <p class="msg" aria-live="polite">@(_dealing ? "Blander kortene…" : _message)</p>
+        @* The explanations are for grown-ups and readers: hidden by default (kept for screen readers). *@
+        <p class="msg @(_showText ? "" : "visually-hidden")" aria-live="polite">@(_dealing ? "Blander kortene…" : _message)</p>
 
         <div class="board">
         <section class="top" aria-label="Hjemmebunker, vendt kort og bunke">
@@ -172,6 +174,7 @@ else
                     <li>🂠 <b>Tryk på bunken</b> for at vende et kort. <b>Tryk på det vendte kort</b> for at spille det: det går hjem, hvis det kan, og ellers til den kolonne længst til venstre, hvor det passer. Er bunken tom? Tryk på den tomme plads for at vende kortene om igen.</li>
                     <li>👑 <b>Tom kolonne?</b> Kun @CardText.DefiniteName(maxRank, maxRank) kan ligge der.</li>
                     <li>💡 Slå <b>lyspæren</b> til, hvis du vil have hjælp: den tænder, når det vendte kort har et sted at gå hen, og de steder, hvor det passer, lyser gult.</li>
+                    <li>💬 Slå <b>Tekst</b> til for at få en kort forklaring efter hvert træk – fx hvorfor et kort måtte lægges, hvor det blev lagt.</li>
                     <li>↩️ Lavet en fejl? Tryk på <b>Fortryd</b>.</li>
                 </ul>
                 <div class="dialog-buttons"><button type="button" class="btn primary" @onclick="CloseHelp">Lad os spille!</button></div>
@@ -194,6 +197,7 @@ else
     private LevelInfo _level = LevelInfo.All[0];
     private bool _animals = true;
     private bool _bulbOn;
+    private bool _showText;
     private bool _dealing;
     private bool _won;
     private bool _newRecord;
@@ -228,6 +232,7 @@ else
         _level = LevelInfo.FromNumber(ParseInt(await LoadAsync("level"), 1));
         _animals = await LoadAsync("animals") != "0";   // on unless switched off
         _bulbOn = await LoadAsync("bulb") == "1";       // off unless switched on
+        _showText = await LoadAsync("text") == "1";     // off unless switched on: most players can't read yet
         for (int i = 0; i < _solved.Length; i++)
         {
             _solved[i] = ParseInt(await LoadAsync($"solved.{i + 1}"), 0);
@@ -259,6 +264,7 @@ else
     {
         await SaveAsync("animals", _animals ? "1" : "0");
         await SaveAsync("bulb", _bulbOn ? "1" : "0");
+        await SaveAsync("text", _showText ? "1" : "0");
     }
 
     // ---------- Timer ----------
