@@ -178,6 +178,45 @@ foreach (var level in LevelInfo.All)
     Check(k2.PlayColumn(0, 0) is null, "lone king does not shuffle to another empty column");
 }
 {
+    // several places: the lists are in the preferred order, and an explicit choice is obeyed
+    var g = new GameState(13, 3);
+    g.Home[(int)Suit.Hearts] = 1;
+    g.Columns[1].Cards.Add(new Card(Suit.Spades, 3));
+    g.Columns[2].Cards.Add(new Card(Suit.Clubs, 3));
+    g.Waste.Add(new Card(Suit.Hearts, 2));
+    var t = g.TargetsForWaste();
+    Check(t.SequenceEqual([Target.HomeOf(Suit.Hearts), Target.Column(1), Target.Column(2)]), "waste targets: home, then columns left to right");
+    Check(g.MoveWaste(Target.Column(2)) is { Kind: MoveKind.WasteToColumn } && g.Columns[2].Cards.Count == 2 && g.Home[0] == 1, "waste goes to the chosen column");
+    Check(g.MoveWaste(Target.Column(0)) is null, "empty waste cannot move");
+
+    var c = new GameState(13, 4);
+    c.Columns[0].Cards.Add(new Card(Suit.Spades, 6));
+    c.Columns[1].Cards.Add(new Card(Suit.Hearts, 5));
+    c.Columns[3].Cards.Add(new Card(Suit.Clubs, 6));
+    Check(c.TargetsForColumn(1, 0).SequenceEqual([Target.Column(3), Target.Column(0)]), "column targets start right and wrap");
+    Check(c.MoveColumn(1, 0, Target.Column(0)) is { Kind: MoveKind.ColumnToColumn } && c.Columns[0].Cards.Count == 2, "column card goes to the chosen column");
+    Check(c.MoveColumn(0, 0, Target.Column(2)) is null, "a non-king may not be put in an empty column");
+}
+{
+    // taking a card back down from a home pile
+    var g = new GameState(13, 3);
+    g.Home[(int)Suit.Hearts] = 5;
+    g.Columns[0].Cards.Add(new Card(Suit.Hearts, 6));
+    g.Columns[1].Cards.Add(new Card(Suit.Spades, 6));
+    g.Columns[2].Cards.Add(new Card(Suit.Clubs, 6));
+    Check(g.TargetsForHome(Suit.Hearts).SequenceEqual([Target.Column(1), Target.Column(2)]), "home card fits on the black 6s only");
+    Check(g.TargetsForHome(Suit.Spades).Count == 0, "empty home pile has nothing to give");
+    var m = g.MoveHome(Suit.Hearts, 2);
+    Check(m is { Kind: MoveKind.HomeToColumn, Card: { Rank: 5 }, Onto: { Suit: Suit.Clubs } } && g.Home[0] == 4 && g.Columns[2].Cards.Count == 2, "red 5 comes back down onto the chosen column");
+    Check(g.MoveHome(Suit.Hearts, 0) is null && g.Home[0] == 4, "red 4 does not fit on a red 6");
+
+    var k = new GameState(6, 3);
+    k.Home[(int)Suit.Spades] = 6;
+    k.Columns[1].Cards.Add(new Card(Suit.Hearts, 3));
+    Check(k.TargetsForHome(Suit.Spades).SequenceEqual([Target.Column(0), Target.Column(2)]), "top card goes to empty columns");
+    Check(Coach.Explain(k.MoveHome(Suit.Spades, 0)!, 6, true).StartsWith("Tilbage fra hjemmebunken"), "coach explains the move back");
+}
+{
     // deck: draw order and recycle
     var g = GameState.Deal(LevelInfo.All[0], new Random(1));
     var order = new List<Card>(g.Stock); order.Reverse();

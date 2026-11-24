@@ -25,10 +25,18 @@ public static class Coach
             _ => $"Kun {CardText.DefiniteName(maxRank, maxRank)} kan starte en tom kolonne.",
         };
 
+        if (move.Kind == MoveKind.HomeToColumn) text = "Tilbage fra hjemmebunken! " + text;
+
         if (move.Count > 1) text += " Kortene ovenpå kom med!";
         if (move.Revealed is not null) text += " Et skjult kort blev vendt!";
         return text;
     }
+
+    public const string ChooseTarget =
+        "Kortet kan flere steder hen. Tryk på det sted, hvor det skal ligge – eller på kortet igen for at fortryde.";
+
+    public const string HomeCannotMove =
+        "Det kort kan ikke komme ned fra hjemmebunken lige nu. Det skal have et kort, der er ét tal højere og har den anden farve.";
 
     public static string CannotMove(bool fromDeckPile) => fromDeckPile
         ? "Det kort kan ikke komme nogen steder endnu. Vend et nyt kort fra bunken!"

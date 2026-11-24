@@ -1,0 +1,13 @@
+@namespace EasySolitaire.Components
+
+@* Laid over a home pile or a column while a picked card waits for the player to choose where it goes.
+   It covers the whole pile or column, so it is easy to hit, and a hand points at the card it will land on. *@
+<button type="button" class="target" style="@Style" aria-label="Læg kortet her" @onclick="OnClick">
+    <span class="hand" aria-hidden="true">👇</span>
+</button>
+
+@code {
+    /// <summary>For a column: the --d/--u position of its last card, so the hand points at that card.</summary>
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}

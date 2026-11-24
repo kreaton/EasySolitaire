@@ -27,9 +27,12 @@ It is a Blazor WebAssembly app (.NET 10) that runs entirely in the browser, with
 * Turn **one** card at a time from the deck; the deck can be flipped back over as often as you like.
 * In the columns, put a card on a card that is **one number higher and the other colour**. An empty column only takes the highest card (6 / 10 / K).
 * The four **home piles** at the top left, one per animal (or suit), count up from 1.
-* **Tap the turned card**: it goes home if it can, otherwise to the *leftmost* column it fits on.
-* **Tap a card in a column**: it, and the cards lying on it, moves to another place it fits: home first,
-  otherwise the next fitting column to the right (wrapping around).
+* **Tap the turned card** or **a card in a column** (it takes the cards lying on it along) to move it.
+  With only one place it fits, it goes straight there. With several, the card lifts up and a 👇 hand points at
+  every home pile and column it may go to; tap the one you want, or tap the card again to put it back down.
+* **Tap the top card of a home pile** to take it back down onto a column.
+* Cards fly to where they land and give a little wiggle there; hidden cards flip over when they are uncovered
+  (switched off when the device asks for reduced motion).
 * With **💬 Tekst** on, a short Danish sentence after every move explains *why* it was allowed, to teach the rules
   (*"Den røde 5'er passer på den sorte 6'er: ét tal lavere og en anden farve."*).
 * Made a wrong move? **Fortryd** (undo).
@@ -81,13 +84,15 @@ The app is served from an `easysolitaire` sub-path: `<base href>` in [`wwwroot/i
 
 | Path | What it is |
 | --- | --- |
-| `src/EasySolitaire/Engine/GameState.cs` | The rules: columns, deck, turned cards, home piles and the click moves |
+| `src/EasySolitaire/Engine/GameState.cs` | The rules: columns, deck, turned cards, home piles, every place a card may go, and the moves |
 | `src/EasySolitaire/Engine/Solver.cs` | Deals games and checks with a solver that they can be won |
 | `src/EasySolitaire/Engine/Coach.cs` | The short Danish sentences that explain each move |
 | `src/EasySolitaire/Engine/Card.cs` | Cards, suits, animals and their Danish names |
 | `src/EasySolitaire/Components/Game.razor` | The board, top bar, help and win dialogs |
 | `src/EasySolitaire/Components/CardView.razor` | One card |
+| `src/EasySolitaire/Components/TargetButton.razor` | The tappable frame with a 👇 hand over each place a lifted card may go |
 | `src/EasySolitaire/wwwroot/css/app.css` | All styling; every size scales from one `--cw` (card width) variable |
+| `src/EasySolitaire/wwwroot/js/cards.js` | Card animations: cards fly to where they land and wiggle, hidden cards flip |
 | `src/EasySolitaire/wwwroot/img/card-back.svg` | The back of the cards |
 | `src/EasySolitaire/wwwroot/index.html` | Host page, icons and PWA meta tags |
 | `src/EasySolitaire/wwwroot/manifest.webmanifest` | PWA manifest for "Add to Home Screen" |

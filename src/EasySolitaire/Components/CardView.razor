@@ -3,6 +3,7 @@
 <button type="button"
         class="@CssClass"
         style="@Style"
+        data-card="@(AnimId ?? Card.Id.ToString())"
         @onclick="OnClick"
         disabled="@(!Clickable)"
         aria-label="@AriaLabel">
@@ -25,6 +26,10 @@
     [Parameter] public bool Clickable { get; set; }
     [Parameter] public bool Glow { get; set; }
     [Parameter] public bool Shake { get; set; }
+    /// <summary>Lifted: the player tapped it and is choosing where it should go.</summary>
+    [Parameter] public bool Picked { get; set; }
+    /// <summary>Name used by js/cards.js to follow the card when it moves (default: the card's id).</summary>
+    [Parameter] public string? AnimId { get; set; }
     /// <summary>Inline style, used by columns to position the card.</summary>
     [Parameter] public string? Style { get; set; }
     [Parameter] public string? AriaOverride { get; set; }
@@ -33,7 +38,7 @@
 
     private string CssClass =>
         "card " + (FaceUp ? "face " + (Card.IsRed ? "red" : "black") : "back")
-        + (Glow ? " glow" : "") + (Shake ? " shake" : "") + (Clickable ? " clickable" : "");
+        + (Glow ? " glow" : "") + (Shake ? " shake" : "") + (Picked ? " picked" : "") + (Clickable ? " clickable" : "");
 
     private string AriaLabel
     {

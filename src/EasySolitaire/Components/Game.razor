@@ -58,11 +58,13 @@ else
             {
                 var suit = (Suit)s;
                 int h = _g.Home[s];
+                var homeTarget = Target.HomeOf(suit);
                 <div class="pile">
                     @if (h > 0)
                     {
                         <CardView @key="@(new Card(suit, h).Id)" Card="new Card(suit, h)" MaxRank="maxRank" Animals="_animals"
-                                  Glow="@(glowHome == s)" />
+                                  Clickable="true" Glow="@(glowHome == s)" Picked="@(_pick?.Key == HomeKey(suit))"
+                                  Shake="@(_shake == HomeKey(suit))" OnClick="() => PlayHomeAsync(suit)" />
                     }
                     else
                     {
@@ -72,6 +74,10 @@ else
                             <small>@CardText.Label(1, maxRank)</small>
                         </div>
                     }
+                    @if (IsTarget(homeTarget))
+                    {
+                        <TargetButton OnClick="() => ChooseAsync(homeTarget)" />
+                    }
                 </div>
             }
 
@@ -79,7 +85,7 @@ else
                 @if (turned is { } wc)
                 {
                     <CardView @key="wc.Id" Card="wc" MaxRank="maxRank" Animals="_animals" Clickable="true"
-                              Glow="lit" Shake="@(_shake == "waste")" OnClick="PlayWasteAsync" />
+                              Glow="lit" Picked="@(_pick?.Key == WasteKey)" Shake="@(_shake == WasteKey)" OnClick="PlayWasteAsync" />
                 }
                 else
                 {
@@ -95,7 +101,7 @@ else
             <div class="pile">
                 @if (_g.Stock.Count > 0)
                 {
-                    <CardView FaceUp="false" Clickable="true" AriaOverride="Bunke: vend et nyt kort" OnClick="Draw">
+                    <CardView FaceUp="false" Clickable="true" AnimId="deck" AriaOverride="Bunke: vend et nyt kort" OnClick="Draw">
                         <span class="count">@_g.Stock.Count</span>
                     </CardView>
                 }
@@ -126,8 +132,14 @@ else
                         bool down = i < col.FaceDown;
                         bool last = i == col.Cards.Count - 1;
                         <CardView @key="card.Id" Card="card" FaceUp="!down" MaxRank="maxRank" Animals="_animals"
-                                  Clickable="!down" Glow="@(last && accepts)" Shake="@(_shake == $"c{c}-{i}")"
+                                  Clickable="!down" Glow="@(last && accepts)" Shake="@(_shake == ColumnKey(c, i))"
+                                  Picked="@(_pick is { Column: var pc, Index: var pi } && pc == c && i >= pi)"
                                   Style="@CardStyle(col, i)" OnClick="() => PlayColumnAsync(c, i)" />
+                    }
+                    @if (IsTarget(Target.Column(c)))
+                    {
+                        <TargetButton Style="@(col.IsEmpty ? "--d:0;--u:0" : CardStyle(col, col.Cards.Count - 1))"
+                                      OnClick="() => ChooseAsync(Target.Column(c))" />
                     }
                 </div>
             }
@@ -171,7 +183,9 @@ else
                     <li>🎯 <b>Mål:</b> flyt alle kort op i de fire <b>hjemmebunker</b> øverst til venstre. Hver bunke er @(_animals ? "ét dyr" : "én kulør") og tæller opad: <b>1, 2, 3…</b> op til @CardText.DefiniteName(maxRank, maxRank).</li>
                     <li>🔽 <b>I kolonnerne</b> lægger du et kort på et kort, der er <b>ét tal højere</b> og har en <b>anden farve</b>. Rød 5 på sort 6 ✅. Rød 5 på rød 6 ❌.</li>
                     <li>👆 <b>Tryk på et kort i en kolonne</b> for at flytte det – og kortene, der ligger på det – hen, hvor det passer. Skjulte kort vender sig, når du afdækker dem!</li>
-                    <li>🂠 <b>Tryk på bunken</b> for at vende et kort. <b>Tryk på det vendte kort</b> for at spille det: det går hjem, hvis det kan, og ellers til den kolonne længst til venstre, hvor det passer. Er bunken tom? Tryk på den tomme plads for at vende kortene om igen.</li>
+                    <li>🂠 <b>Tryk på bunken</b> for at vende et kort. <b>Tryk på det vendte kort</b> for at spille det. Er bunken tom? Tryk på den tomme plads for at vende kortene om igen.</li>
+                    <li>👇 <b>Kan kortet flere steder hen?</b> Så løfter det sig, og en hånd peger på hvert sted, det kan ligge. Tryk på det sted, du vil have – eller på kortet igen, hvis du fortryder.</li>
+                    <li>⬇️ <b>Tryk på et kort i en hjemmebunke</b> for at tage det ned i en kolonne igen.</li>
                     <li>👑 <b>Tom kolonne?</b> Kun @CardText.DefiniteName(maxRank, maxRank) kan ligge der.</li>
                     <li>💡 Slå <b>lyspæren</b> til, hvis du vil have hjælp: den tænder, når det vendte kort har et sted at gå hen, og de steder, hvor det passer, lyser gult.</li>
                     <li>💬 Slå <b>Tekst</b> til for at få en kort forklaring efter hvert træk – fx hvorfor et kort måtte lægges, hvor det blev lagt.</li>
@@ -204,6 +218,18 @@ else
     private bool _showHelp;
     private string _message = "";
     private string? _shake;
+    private Pick? _pick;          // a card that can go several places, waiting for the player to choose
+    private bool _animate;        // card positions were noted before a change: animate after the next render
+    private int _fromDeck;        // id of a card just turned from the deck (it flies out of the deck)
+
+    private const string WasteKey = "waste";
+    private static string ColumnKey(int column, int index) => $"c{column}-{index}";
+    private static string HomeKey(Suit suit) => $"h{(int)suit}";
+
+    /// <summary>A tapped card (Column/Index are set for a column card) and every place it may go.</summary>
+    private sealed record Pick(string Key, int Column, int Index, List<Target> Targets, Func<Target, MoveInfo?> Move);
+
+    private bool IsTarget(Target t) => _pick is not null && _pick.Targets.Contains(t);
 
     private int TotalSolved => _solved.Sum();
     private bool CanUndo => _undo.Count > 0 && !_won && !_dealing;
@@ -308,6 +334,7 @@ else
 
         _g = DealGenerator.NewDeal(_level, Random.Shared);
         _undo.Clear();
+        _pick = null;
         _message = $"Niveau {_level.Number}: kort {_level.RangeText}. Tryk på bunken for at vende et kort!";
         _dealing = false;
     }
@@ -334,50 +361,86 @@ else
     private void Draw()
     {
         if (_g is null || _won || _dealing) return;
+        _pick = null;
         var before = _g.Clone();
+        Capture();
         var result = _g.Draw();
         if (result == DrawResult.Nothing) return;
 
         _undo.Push(before);
         StartClock();
+        if (result == DrawResult.Drew) _fromDeck = _g.WasteTop!.Value.Id;
+        _animate = true;
         _message = result == DrawResult.Drew
             ? "Et nyt kort er vendt. Kan det komme nogen steder? Tryk på det for at prøve!"
             : "Bunken er vendt om. Lad os gå kortene igennem igen!";
     }
 
-    private async Task PlayWasteAsync()
+    private Task PlayWasteAsync() =>
+        _g is not { } g ? Task.CompletedTask
+            : TryPlayAsync(new Pick(WasteKey, -1, -1, g.TargetsForWaste(), g.MoveWaste),
+                           Coach.CannotMove(fromDeckPile: true));
+
+    private Task PlayColumnAsync(int column, int index) =>
+        _g is not { } g ? Task.CompletedTask
+            : TryPlayAsync(new Pick(ColumnKey(column, index), column, index, g.TargetsForColumn(column, index),
+                                    to => g.MoveColumn(column, index, to)),
+                           Coach.CannotMove(fromDeckPile: false));
+
+    private Task PlayHomeAsync(Suit suit) =>
+        _g is not { } g ? Task.CompletedTask
+            : TryPlayAsync(new Pick(HomeKey(suit), -1, -1, g.TargetsForHome(suit), to => g.MoveHome(suit, to.Index)),
+                           Coach.HomeCannotMove);
+
+    /// <summary>
+    /// A card was tapped. One place to go: it goes there. More places: it is lifted and a hand points
+    /// at each place, so the player can choose. Tapping the lifted card again puts it back down.
+    /// </summary>
+    private async Task TryPlayAsync(Pick pick, string cannotMove)
     {
-        if (_g is null || _won || _dealing) return;
-        var before = _g.Clone();
-        var move = _g.PlayWaste();
-        if (move is null)
+        if (_won || _dealing) return;
+        if (_pick?.Key == pick.Key)
         {
-            _message = Coach.CannotMove(fromDeckPile: true);
-            await ShakeAsync("waste");
+            _pick = null;
+            _message = "Kortet blev liggende.";
             return;
         }
-        await AfterMoveAsync(before, move);
-    }
+        _pick = null;
 
-    private async Task PlayColumnAsync(int column, int index)
-    {
-        if (_g is null || _won || _dealing) return;
-        var before = _g.Clone();
-        var move = _g.PlayColumn(column, index);
-        if (move is null)
+        switch (pick.Targets.Count)
         {
-            _message = Coach.CannotMove(fromDeckPile: false);
-            await ShakeAsync($"c{column}-{index}");
-            return;
+            case 0:
+                _message = cannotMove;
+                await ShakeAsync(pick.Key);
+                break;
+            case 1:
+                await MoveAsync(pick, pick.Targets[0]);
+                break;
+            default:
+                _pick = pick;
+                _message = Coach.ChooseTarget;
+                break;
         }
-        await AfterMoveAsync(before, move);
     }
 
-    private async Task AfterMoveAsync(GameState before, MoveInfo move)
+    private async Task ChooseAsync(Target to)
     {
+        if (_pick is not { } pick || _won || _dealing) return;
+        _pick = null;
+        await MoveAsync(pick, to);
+    }
+
+    private async Task MoveAsync(Pick pick, Target to)
+    {
+        var before = _g!.Clone();
+        Capture();
+        var move = pick.Move(to);
+        if (move is null) return;   // can't happen: the targets were worked out from this same table
+
+        _animate = true;
         _undo.Push(before);
         StartClock();
-        _message = Coach.Explain(move, _g!.MaxRank, _animals);
+        _message = Coach.Explain(move, _g.MaxRank, _animals);
         if (_g.IsWon)
         {
             _message = "🎉 Alle kort er hjemme. Godt klaret!";
@@ -388,8 +451,32 @@ else
     private void Undo()
     {
         if (!CanUndo) return;
+        _pick = null;
+        Capture();
+        _animate = true;
         _g = _undo.Pop();
         _message = "Et skridt tilbage.";
+    }
+
+    // ---------- Animations (js/cards.js) ----------
+    // Before a change, the place of every card is noted. After the new table is drawn, each card that
+    // moved flies from its old place to the new one and wiggles when it lands, and cards that were turned
+    // over flip. In WebAssembly these calls are synchronous, so the browser paints nothing in between.
+
+    private void Capture()
+    {
+        try { (JS as IJSInProcessRuntime)?.InvokeVoid("kabaleAnim.capture"); }
+        catch (JSException) { }   // no animations is fine; the game still works
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!_animate) return;
+        _animate = false;
+        string fromDeck = _fromDeck.ToString();
+        _fromDeck = 0;
+        try { (JS as IJSInProcessRuntime)?.InvokeVoid("kabaleAnim.play", fromDeck); }
+        catch (JSException) { }
     }
 
     private async Task ShakeAsync(string key)
